@@ -24,8 +24,11 @@ class App:
                 self.running = False
 
     def update(self,dt):
-        self.ball.seek_to(Vector2(500, 500)) 
+        mouse_pos = Vector2(pygame.mouse.get_pos())
+        self.ball.seek_to(mouse_pos)
         self.ball.update(dt)
+
+        
 
 
     def draw(self):
