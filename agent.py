@@ -1,74 +1,94 @@
-import pygame
-from pygame.draw import circle, rect
-from pygame.math import Vector2
 
-window_width = 1280
-window_height = 720
+from pygame.math import Vector2
+from pygame.draw import circle, line, rect
 
 class Agent:
     def __init__(self, position, radius, color):
-        self.circle_pos = position
-        self.circle_vel = Vector2(4, 3)
-        self.circle_radius = radius
         self.circle_color = color
-        #Pending physics
-        self.circle_acc = Vector2(0,0)
+        self.radius = radius
+        self.position = position
+        self.vel = Vector2(0, 0)
+        self.acc = Vector2(0, 0)
         self.mass = 1.0
+        self.EYE_SIGHT = 100
+        self.STOP_DIST = 5
+        self.waypoints = [Vector2(100, 100),Vector2(400, 100),Vector2(400, 400),Vector2(100, 400)]
+        self.current_waypoint = 0     # Start index for waypoint tracking
+        self.waypoint_radius = 10
+    
+    def set_waypoints(self, waypoint_list):
+        self.waypoints = waypoint_list
+        self.current_waypoint = 0
+    
+    def follow_waypoints(self):
+        if not self.waypoints:
+            return
+        target = self.waypoints[self.current_waypoint]
+        dist = (target - self.position).length()
 
-        self.circlephys_pos = pygame.math.Vector2(400, 300)
-        self.circlephys_vel = pygame.math.Vector2(0, 0)
-        self.circlephys_radius = 60
-        self.circlephys_color = (0, 255, 255)
-        self.circlephys_acc = 0.01 #Mouse Acceleration
-        self.circlephys_damp = 0.92 #Momentum
-        self.EYESIGHT = 100
-        self.DIST = 5
+        if dist < self.waypoint_radius:
+        # Move to the next waypoint
+            self.current_waypoint += 1
+            if self.current_waypoint >= len(self.waypoints):
+                self.current_waypoint = 0  # Loop back to start (optional)
+        self.arrive_to(target)
+
         
     def seek_to(self, target_pos):
-        d = target_pos - self.circle_pos
-        if d.length() != 0:
-            d = d.normalize()
-            self.apply_force(d)
-    
+        MAX_FORCE = 5
+        d = target_pos - self.position
+        if d.length_squared() == 0:
+            return
+        
+        desired = d.normalize() * MAX_FORCE
+        steering = desired - self.vel
+        
+        if steering.length() > MAX_FORCE:
+            steering.scale_to_length(MAX_FORCE)
+
+        self.apply_force(steering)
+
+    def arrive_to(self, target_pos):
+        MAX_FORCE = 5
+        d = target_pos - self.position
+        if d.length_squared() == 0:
+            return
+        
+        desired = d.normalize() * MAX_FORCE
+        steering = desired - self.vel
+        
+        if steering.length() > MAX_FORCE:
+            steering.scale_to_length(MAX_FORCE)
+ 
+        self.apply_force(steering)        
+
+    def flee_from(self, target_pos):
+        MAX_FORCE = 5
+        d = (target_pos - self.position)
+        if d.length_squared() == 0:
+            return
+        
+        dist = d.length()
+        if dist > self.EYE_SIGHT:
+            desired = Vector2(0, 0)
+        else:
+            desired = (-d).normalize() * (MAX_FORCE * ((self.EYE_SIGHT - dist)/self.EYE_SIGHT))
+        
+        steering = desired - self.vel
+         
+        if steering.length() > MAX_FORCE:
+            steering.scale_to_length(MAX_FORCE)
+        self.apply_force(steering)     
+
     def apply_force(self, force):
-        self.circle_acc += force / self.mass
+        self.acc += force / self.mass
 
-    def update(self, dt):
-        self.circle_pos += self.circle_vel
-
-        if self.circle_pos.x - self.circle_radius <= 0 or self.circle_pos.x + self.circle_radius >= window_width:
-            self.circle_vel.x *= -1
-            c = pygame.Color(0)
-            c.hsva = (pygame.time.get_ticks() % 360, 100, 100, 100)
-            self.circle_color = c
-
-        if self.circle_pos.y - self.circle_radius <= 0 or self.circle_pos.y + self.circle_radius >= window_height:
-            self.circle_vel.y *= -1
-            c = pygame.Color(0)
-            c.hsva = (pygame.time.get_ticks() % 360, 100, 100, 100)
-            self.circle_color = c
-
-        mouse_vec = Vector2(pygame.mouse.get_pos())  #Current mouse position
-        direction = mouse_vec - self.circlephys_pos
-
-        #Apply acceleration toward the mouse
-        direction *= self.circlephys_acc
-
-        #Update velocity and apply damping
-        self.circlephys_vel += direction
-        self.circlephys_vel *= self.circlephys_damp
-
-        #Update position
-        self.circlephys_pos += self.circlephys_vel
-
-
+    def update(self, delta_time_ms):
+        self.vel = self.vel + self.acc
+        self.position = self.position + self.vel
+        self.acc = Vector2(0,0)
 
     def draw(self, screen):
-        #Draw bouncing circle
-        circle(screen, self.circle_color, (int(self.circle_pos.x), int(self.circle_pos.y)), self.circle_radius)
-
-        #Draw physics-following circle
-        circle(screen, (100,100,0), (int(self.circlephys_pos.x), int(self.circlephys_pos.y)), self.EYESIGHT,width=1)
-        circle(screen, self.circlephys_color, (int(self.circlephys_pos.x), int(self.circlephys_pos.y)), self.circlephys_radius)
-
-
+        circle(screen, "Yellow", self.position, self.EYE_SIGHT, width = 1)
+        circle(screen, self.circle_color, self.position, self.radius)
+        circle(screen, "Green", self.position, self.STOP_DIST, width = 1)
