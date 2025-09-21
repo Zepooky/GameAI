@@ -10,11 +10,11 @@ class Agent:
         self.vel = Vector2(0, 0)
         self.acc = Vector2(0, 0)
         self.mass = 1.0
-        self.EYE_SIGHT = 100
+        self.EYE_SIGHT = 300
         self.STOP_DIST = 5
-        self.waypoints = [Vector2(100, 100),Vector2(400, 100),Vector2(400, 400),Vector2(100, 400)]
         self.current_waypoint = 0     # Start index for waypoint tracking
         self.waypoint_radius = 10
+        self.target = Vector2(0,0)
     
     def set_waypoints(self, waypoint_list):
         self.waypoints = waypoint_list
@@ -35,7 +35,9 @@ class Agent:
 
         
     def seek_to(self, target_pos):
-        MAX_FORCE = 5
+        self.target = target_pos
+
+        MAX_FORCE = 2
         d = target_pos - self.position
         if d.length_squared() == 0:
             return
@@ -63,7 +65,7 @@ class Agent:
         self.apply_force(steering)        
 
     def flee_from(self, target_pos):
-        MAX_FORCE = 5
+        MAX_FORCE = 7
         d = (target_pos - self.position)
         if d.length_squared() == 0:
             return
@@ -89,6 +91,6 @@ class Agent:
         self.acc = Vector2(0,0)
 
     def draw(self, screen):
-        circle(screen, "Yellow", self.position, self.EYE_SIGHT, width = 1)
+
         circle(screen, self.circle_color, self.position, self.radius)
-        circle(screen, "Green", self.position, self.STOP_DIST, width = 1)
+        line(screen, (100,100,100),self.position,self.target,1)

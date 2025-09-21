@@ -3,7 +3,7 @@
 import pygame
 from pygame.draw import circle, line, rect
 from pygame.math import Vector2
-
+import pygame_gui
 from agent import Agent
 
 window_width = 1280
@@ -13,7 +13,13 @@ class App:
     def __init__(self):
         print("Application is created.")
         pygame.init()
+        
+
         self.screen = pygame.display.set_mode((window_width, window_height))
+        self.manager = pygame_gui.UIManager((window_width,window_height))
+        self.hello_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350,275),(100,50)),
+                                                    text='Say Hello',
+                                                    manager=self.manager)
         self.clock = pygame.time.Clock()
         self.CHANGE_DIR = pygame.USEREVENT +1
         pygame.time.set_timer(self.CHANGE_DIR, 2000)
@@ -49,37 +55,49 @@ class App:
 
     def handle_input(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                #if hasattr(event, 'ui_element'):
+                    #if event.ui_element == self.hello_button:
+                if self.hello_button.rect.collidepoint(event.pos):
+                    print("Button pressed!")
+            elif event.type == pygame.QUIT:
                 self.running = False
+
+           # elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            #    if event.ui_element == self.hello_button:
+             #       print("Hello World")
+                    
+            self.manager.process_events(event)
 
         #mouse_x, mouse_y = pygame.mouse.get_pos()
         #self.target = Vector2(mouse_x, mouse_y)
 
 
-    def update(self, delta_time_ms):
-        #self.ball.flee_from(self.target)   # Apply a fleeing force based on mouse position
-        #self.ball.seek_to(self.target)
+    def update(self, delta_time_s):
+        self.manager.update(delta_time_s)
+
         
         for agent in self.agents:
             agent.follow_waypoints()
-            agent.update(delta_time_ms)
+            agent.update(delta_time_s)
 
         
     def draw(self):
         self.screen.fill("gray")
         for agent in self.agents:
             agent.draw(self.screen)
+        self.manager.draw_ui(self.screen)
         pygame.display.flip()
 
     
 
     def run(self):
         while self.running:
-            dt = self.clock.tick(60)
+            dt = self.clock.tick(60) /1000.0
             self.handle_input()
             self.update(dt)
             self.draw()
-            
+
 
         pygame.quit()
 
