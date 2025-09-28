@@ -15,6 +15,8 @@ class Agent:
         self.current_waypoint = 0     # Start index for waypoint tracking
         self.waypoint_radius = 10
         self.target = Vector2(0,0)
+        self.center_of_mass = Vector2(0,0)
+        #self.gravity = Vector2(0, 1)
     
     def set_waypoints(self, waypoint_list):
         self.waypoints = waypoint_list
@@ -24,9 +26,9 @@ class Agent:
         if not self.waypoints:
             return
         target = self.waypoints[self.current_waypoint]
-        dist = (target - self.position).length()
+        dist = (target - self.position).length_squared()
 
-        if dist < self.waypoint_radius:
+        if dist < self.waypoint_radius * self.waypoint_radius:
         # Move to the next waypoint
             self.current_waypoint += 1
             if self.current_waypoint >= len(self.waypoints):
@@ -70,8 +72,8 @@ class Agent:
         if d.length_squared() == 0:
             return
         
-        dist = d.length()
-        if dist > self.EYE_SIGHT:
+        dist = d.length_squared()
+        if dist > self.EYE_SIGHT * self.EYE_SIGHT:
             desired = Vector2(0, 0)
         else:
             desired = (-d).normalize() * (MAX_FORCE * ((self.EYE_SIGHT - dist)/self.EYE_SIGHT))
@@ -85,12 +87,68 @@ class Agent:
     def apply_force(self, force):
         self.acc += force / self.mass
 
+    #def set_gravity(self, gravity):
+     #   self.gravity = gravity
+
+
+    def get_cohesion_force(self, agents): #group up multiple agents
+        center_of_mass = Vector2(0,0)
+        count = 0
+        for agent in agents:
+
+            dist = (agent.position - self.position).length_squared()
+            if 0 < dist < 400*400:
+                center_of_mass += agent.position
+                count +=1
+
+        if count > 0:
+            center_of_mass /= count
+            d = center_of_mass - self.position
+            d.scale_to_length(2)
+            self.center_of_mass = center_of_mass
+            return d
+        return Vector2()
+    
+    def get_separation_force(self,agents):
+        s = Vector2()
+        count = 0
+        for agent in agents:
+            dist = (agent.position - self.position).length_squared()
+            if dist < 100*100 and dist != 0:
+                d = self.position - agent.position
+                s += d
+                count+=1
+
+        if count>0:
+            s.scale_to_length(2)
+            return s
+        
+        return Vector2()
+
+    def get_align_force(self,agents):
+        s = Vector2()
+        count = 0
+        for agent in agents:
+            dist = (agent.position - self.position).length_squared()
+            if dist < 100*100 and dist != 0:
+                s += agent.vel
+                count+=1
+
+        if count>0 and s != Vector2():
+            s /= count
+            s.scale_to_length(2)
+            return s
+        
+        return Vector2()
+
     def update(self, delta_time_ms):
-        self.vel = self.vel + self.acc
+        self.vel = self.vel + self.acc# + self.gravity
         self.position = self.position + self.vel
+        self.vel *= 0.9
         self.acc = Vector2(0,0)
+
 
     def draw(self, screen):
 
         circle(screen, self.circle_color, self.position, self.radius)
-        line(screen, (100,100,100),self.position,self.target,1)
+        line(screen, (100,100,100),self.position,self.center_of_mass)
